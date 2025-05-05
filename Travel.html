@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Travel Checklist with Profiles & Categories</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background-color: #f1f8ff;
+    }
+    h1 {
+      text-align: center;
+      color: #3e4e5e;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .input-row, .flight-info-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    input, select, button {
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    input[type="text"] {
+      flex: 2;
+    }
+    input[type="number"] {
+      width: 60px;
+    }
+    select {
+      flex: 1;
+    }
+    button {
+      border: none;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .delete-btn {
+      background-color: #ff4d4d;
+      color: white;
+      border-radius: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .delete-btn:hover {
+      background-color: #e60000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    table th, table td {
+      padding: 8px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+    .strikeout {
+      text-decoration: line-through;
+      color: gray;
+    }
+    .category h3 {
+      border-bottom: 2px solid #4CAF50;
+      padding-bottom: 5px;
+      color: #4CAF50;
+    }
+    .clear-btn {
+      margin-top: 20px;
+      background-color: #dc3545;
+    }
+    .clear-btn:hover {
+      background-color: #a71d2a;
+    }
+    .error {
+      color: red;
+      font-size: 14px;
+    }
+    /* Style for pop-up delete category list */
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .popup-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+    }
+    .popup-content select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    .popup-content button {
+      width: 100%;
+      background-color: #dc3545; /* Red color for delete button */
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    .popup-content button:hover {
+      background-color: #a71d2a; /* Darker red for hover effect */
+    }
+    /* Blue styling for the Cancel button */
+    .popup-content .cancel-btn {
+      background-color: #007bff; /* Blue color for cancel button */
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+    }
+    .popup-content .cancel-btn:hover {
+      background-color: #0056b3; /* Darker blue for hover effect */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Travel Checklist</h1>
+
+    <div class="input-row">
+      <label for="profileSelect">Profile:</label>
+      <select id="profileSelect" onchange="switchProfile()"></select>
+      <button onclick="createProfile()">+ New Profile</button>
+      <button onclick="deleteProfile()">🗑 Delete Profile</button>
+    </div>
+
+    <div class="flight-info-row">
+      <input type="text" id="destination" placeholder="Enter destination" />
+    </div>
+
+    <div class="flight-info-row">
+      <div>
+        <label for="departureDate">Departure Date:</label><br />
+        <input type="date" id="departureDate" />
+      </div>
+      <div>
+        <label for="returnDate">Return Date:</label><br />
+        <input type="date" id="returnDate" />
+      </div>
+    </div>
+
+    <div class="flight-info-row">
+      <input type="text" id="departureFlight" placeholder="Departure Flight No." />
+      <input type="text" id="returnFlight" placeholder="Return Flight No." />
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="itemInput" placeholder="Add an item..." />
+      <input type="number" id="quantityInput" min="1" value="1" placeholder="Qty" />
+      <select id="categorySelect" onchange="checkNewCategoryOption()"></select>
+      <button onclick="addItem()">Add</button>
+    </div>
+
+    <div id="error-message" class="error"></div>
+    <div id="checklist" style="display:none;"></div>
+
+    <div id="category-actions"></div>
+
+    <button class="clear-btn" onclick="clearList()">Clear All</button>
+  </div>
+
+  <!-- Pop-up for category deletion -->
+  <div class="popup-overlay" id="deleteCategoryPopup">
+    <div class="popup-content">
+      <h3>Delete Category</h3>
+      <select id="deleteCategorySelect"></select>
+      <button onclick="confirmDeleteCategory()">Delete Category</button>
+      <button class="cancel-btn" onclick="closePopup()">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    let currentProfile = null;
+    let categories = [];
+
+    function loadProfiles() {
+      const profiles = JSON.parse(localStorage.getItem('profiles')) || [];
+      const select = document.getElementById('profileSelect');
+      select.innerHTML = '<option value="">-- Select Profile --</option>';
+      profiles.forEach(profile => {
+        const opt = document.createElement('option');
+        opt.value = profile;
+        opt.textContent = profile;
+        select.appendChild(opt);
+      });
+    }
+
+    function createProfile() {
+      const name = prompt("Enter a new profile name:");
+      if (!name) return;
+      let profiles = JSON.parse(localStorage.getItem('profiles')) || [];
+      if (profiles.includes(name)) {
+        alert("Profile already exists.");
+        return;
+      }
+      profiles.push(name);
+      localStorage.setItem('profiles', JSON.stringify(profiles));
+      loadProfiles();
+      document.getElementById('profileSelect').value = name;
+      switchProfile();
+    }
+
+    function deleteProfile() {
+      if (!currentProfile) return alert("No profile selected.");
+      if (!confirm("Are you sure you want to delete this profile and all its data?")) return;
+
+      let profiles = JSON.parse(localStorage.getItem('profiles')) || [];
+      profiles = profiles.filter(p => p !== currentProfile);
+      localStorage.setItem('profiles', JSON.stringify(profiles));
+
+      localStorage.removeItem('travelChecklist_' + currentProfile);
+      localStorage.removeItem('flightInfo_' + currentProfile);
+      localStorage.removeItem('categories_' + currentProfile);
+
+      currentProfile = null;
+      loadProfiles();
+      document.getElementById('checklist').innerHTML = '';
+      document.getElementById('categorySelect').innerHTML = '';
+    }
+
+    function switchProfile() {
+      currentProfile = document.getElementById('profileSelect').value;
+      if (!currentProfile) return;
+      loadCategories();
+      loadList();
+      loadFlightInfo();
+    }
+
+    function loadCategories() {
+      categories = JSON.parse(localStorage.getItem('categories_' + currentProfile)) || [
+        "Travel Essentials", "Personal Care", "Clothing",
+        "Personal Comfort", "Medication", "Electronics", "Miscellaneous"
+      ];
+      const select = document.getElementById('categorySelect');
+      select.innerHTML = '';
+      categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+      });
+
+      const newCatOption = document.createElement('option');
+      newCatOption.value = "__new__";
+      newCatOption.textContent = "+ Add New Category";
+      select.appendChild(newCatOption);
+
+      const delCatOption = document.createElement('option');
+      delCatOption.value = "__delete__";
+      delCatOption.textContent = "🗑 Delete Category";
+      select.appendChild(delCatOption);
+    }
+
+    function checkNewCategoryOption() {
+      const select = document.getElementById('categorySelect');
+      if (select.value === '__new__') {
+        const newCat = prompt("Enter new category name:");
+        if (newCat) {
+          categories.push(newCat);
+          localStorage.setItem('categories_' + currentProfile, JSON.stringify(categories));
+          loadCategories();
+          select.value = newCat;
+        } else {
+          loadCategories();
+        }
+      } else if (select.value === '__delete__') {
+        openDeleteCategoryPopup();
+      }
+    }
+
+    function openDeleteCategoryPopup() {
+      const popup = document.getElementById('deleteCategoryPopup');
+      const select = document.getElementById('deleteCategorySelect');
+      select.innerHTML = ''; // Clear existing options
+      categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+      });
+      popup.style.display = 'flex'; // Show the popup
+    }
+
+    function closePopup() {
+      document.getElementById('deleteCategoryPopup').style.display = 'none'; // Hide the popup
+    }
+
+    function confirmDeleteCategory() {
+      const select = document.getElementById('deleteCategorySelect');
+      const categoryToDelete = select.value;
+      if (!categoryToDelete) return;
+
+      if (confirm(`Are you sure you want to delete the category "${categoryToDelete}" and all items in it?`)) {
+        categories = categories.filter(c => c !== categoryToDelete);
+        localStorage.setItem('categories_' + currentProfile, JSON.stringify(categories));
+
+        let items = JSON.parse(localStorage.getItem('travelChecklist_' + currentProfile)) || [];
+        items = items.filter(item => item.category !== categoryToDelete);
+        localStorage.setItem('travelChecklist_' + currentProfile, JSON.stringify(items));
+
+        loadCategories();
+        loadList();
+        closePopup(); // Close the pop-up after deletion
+        alert("Category deleted successfully.");
+      }
+    }
+
+    function saveFlightInfo() {
+      if (!currentProfile) return;
+      const info = {
+        destination: document.getElementById('destination').value,
+        departureDate: document.getElementById('departureDate').value,
+        returnDate: document.getElementById('returnDate').value,
+        departureFlight: document.getElementById('departureFlight').value,
+        returnFlight: document.getElementById('returnFlight').value
+      };
+      localStorage.setItem('flightInfo_' + currentProfile, JSON.stringify(info));
+    }
+
+    function loadFlightInfo() {
+      const info = JSON.parse(localStorage.getItem('flightInfo_' + currentProfile));
+      if (!info) return;
+      document.getElementById('destination').value = info.destination || '';
+      document.getElementById('departureDate').value = info.departureDate || '';
+      document.getElementById('returnDate').value = info.returnDate || '';
+      document.getElementById('departureFlight').value = info.departureFlight || '';
+      document.getElementById('returnFlight').value = info.returnFlight || '';
+    }
+
+    function loadList() {
+      const checklistContainer = document.getElementById('checklist');
+      checklistContainer.innerHTML = '';
+      const items = JSON.parse(localStorage.getItem('travelChecklist_' + currentProfile)) || [];
+
+      categories.forEach(category => {
+        const categoryItems = items.filter(item => item.category === category);
+        if (categoryItems.length > 0) {
+          const categoryDiv = document.createElement('div');
+          categoryDiv.className = 'category';
+          const heading = document.createElement('h3');
+          heading.textContent = category;
+          categoryDiv.appendChild(heading);
+
+          const table = document.createElement('table');
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Packed</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          `;
+          const tbody = table.querySelector('tbody');
+
+          categoryItems.forEach(item => {
+            const row = document.createElement('tr');
+            if (item.checked) row.classList.add('strikeout');
+            row.innerHTML = `
+              <td>${item.name}</td>
+              <td><input type="number" min="1" value="${item.quantity}" onchange="updateQuantity(${item.id}, this.value)"></td>
+              <td><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${item.id})"></td>
+              <td><button class="delete-btn" onclick="deleteItem(${item.id})">✕</button></td>
+            `;
+            tbody.appendChild(row);
+          });
+
+          categoryDiv.appendChild(table);
+          checklistContainer.appendChild(categoryDiv);
+        }
+      });
+      checklistContainer.style.display = 'block';  // Show the checklist again when items are loaded
+    }
+
+    function addItem() {
+      const itemName = document.getElementById('itemInput').value;
+      const quantity = document.getElementById('quantityInput').value;
+      const category = document.getElementById('categorySelect').value;
+      if (!itemName || !quantity || !category || category === '__new__') {
+        document.getElementById('error-message').textContent = 'Please fill out all fields and select a valid category.';
+        return;
+      }
+
+      let items = JSON.parse(localStorage.getItem('travelChecklist_' + currentProfile)) || [];
+      const newItem = {
+        id: Date.now(),
+        name: itemName,
+        quantity: quantity,
+        category: category,
+        checked: false
+      };
+      items.push(newItem);
+      localStorage.setItem('travelChecklist_' + currentProfile, JSON.stringify(items));
+      document.getElementById('itemInput').value = '';  // Reset the input field
+      document.getElementById('quantityInput').value = '1'; // Reset quantity
+      loadList(); // Refresh the list
+    }
+
+    function toggleItem(id) {
+      let items = JSON.parse(localStorage.getItem('travelChecklist_' + currentProfile)) || [];
+      const item = items.find(i => i.id === id);
+      item.checked = !item.checked;
+      localStorage.setItem('travelChecklist_' + currentProfile, JSON.stringify(items));
+      loadList();
+    }
+
+    function updateQuantity(id, newQuantity) {
+      let items = JSON.parse(localStorage.getItem('travelChecklist_' + currentProfile)) || [];
+      const item = items.find(i => i.id === id);
+      item.quantity = newQuantity;
+      localStorage.setItem('travelChecklist_' + currentProfile, JSON.stringify(items));
+      loadList();
+    }
+
+    function deleteItem(id) {
+      let items = JSON.parse(localStorage.getItem('travelChecklist_' + currentProfile)) || [];
+      items = items.filter(item => item.id !== id);
+      localStorage.setItem('travelChecklist_' + currentProfile, JSON.stringify(items));
+      loadList();
+    }
+
+    function clearList() {
+      if (confirm("Are you sure you want to clear all items?")) {
+        localStorage.removeItem('travelChecklist_' + currentProfile);
+        loadList();
+      }
+    }
+
+    window.onload = loadProfiles;
+  </script>
+</body>
+</html>
